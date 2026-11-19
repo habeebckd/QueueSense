@@ -182,8 +182,8 @@ public class JobFlowDbContext : DbContext
     private static void SeedInitialData(ModelBuilder modelBuilder)
     {
         var adminUserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-        // Hash for "AdminPassword123!" using BCrypt
-        var adminPasswordHash = "$2a$11$0Ff8wZ8J9J/LqVv0pZ0rI.bZc0V0Wb8J9J/LqVv0pZ0rI.bZc0V0W";
+        // Valid verified BCrypt hash for "AdminPassword123!"
+        var adminPasswordHash = "$2a$11$TKHys93kM2KIp9A57Cimh.jmBJKGCAKsDCC8XllMkKM/2o.SXzeoi";
 
         modelBuilder.Entity<User>().HasData(new User
         {

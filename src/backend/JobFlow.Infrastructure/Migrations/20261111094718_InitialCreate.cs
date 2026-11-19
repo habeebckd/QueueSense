@@ -215,7 +215,7 @@ namespace JobFlow.Infrastructure.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "CreatedAt", "Email", "Name", "PasswordHash", "Role" },
-                values: new object[] { new Guid("11111111-1111-1111-1111-111111111111"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "admin@jobflow.ai", "System Administrator", "$2a$11$0Ff8wZ8J9J/LqVv0pZ0rI.bZc0V0Wb8J9J/LqVv0pZ0rI.bZc0V0W", "Admin" });
+                values: new object[] { new Guid("11111111-1111-1111-1111-111111111111"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "admin@jobflow.ai", "System Administrator", "$2a$11$TKHys93kM2KIp9A57Cimh.jmBJKGCAKsDCC8XllMkKM/2o.SXzeoi", "Admin" });
 
             migrationBuilder.InsertData(
                 table: "JobDefinitions",

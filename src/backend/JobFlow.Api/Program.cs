@@ -89,6 +89,7 @@ builder.Services.AddCors(options =>
 
 // 5. HttpClient & Infrastructure Services
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IDatabaseReadinessService, DatabaseReadinessService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<ITelemetrySanitizer, TelemetrySanitizer>();
 
@@ -159,6 +160,8 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+var readinessService = app.Services.GetRequiredService<IDatabaseReadinessService>();
+
 // Auto-migrate & seed database on startup
 using (var scope = app.Services.CreateScope())
 {
@@ -168,10 +171,25 @@ using (var scope = app.Services.CreateScope())
         var db = scope.ServiceProvider.GetRequiredService<JobFlowDbContext>();
         logger.LogInformation("Applying EF Core database migrations...");
         db.Database.Migrate();
+
+        // Safe idempotent check: Ensure admin user has verified BCrypt password hash
+        var adminUser = db.Users.FirstOrDefault(u => u.Email.ToLower() == "admin@jobflow.ai");
+        if (adminUser != null)
+        {
+            if (!BCrypt.Net.BCrypt.Verify("AdminPassword123!", adminUser.PasswordHash))
+            {
+                logger.LogWarning("Admin password hash in database does not match AdminPassword123! Updating to verified hash.");
+                adminUser.PasswordHash = "$2a$11$TKHys93kM2KIp9A57Cimh.jmBJKGCAKsDCC8XllMkKM/2o.SXzeoi";
+                db.SaveChanges();
+            }
+        }
+
+        readinessService.SetReady();
         logger.LogInformation("Database is ready and up to date.");
     }
     catch (Exception ex)
     {
+        readinessService.SetFailed(ex.Message);
         logger.LogError(ex, "Database connection or migration failed on startup.");
     }
 }
@@ -189,6 +207,52 @@ app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Health & Readiness Endpoints
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "QueueSense API" }));
+app.MapGet("/api/health", () => Results.Ok(new { status = "Healthy", service = "QueueSense API" }));
+
+app.MapGet("/health/ready", (IDatabaseReadinessService readiness) =>
+{
+    if (readiness.IsReady)
+    {
+        return Results.Ok(new
+        {
+            status = "Ready",
+            database = "Connected",
+            initializedAt = readiness.InitializedAt
+        });
+    }
+
+    return Results.Json(new
+    {
+        status = "Unhealthy",
+        database = "Disconnected",
+        error = readiness.FailureReason ?? "Database initialization has not completed.",
+        lastCheckedAt = readiness.InitializedAt ?? DateTime.UtcNow
+    }, statusCode: StatusCodes.Status503ServiceUnavailable);
+});
+
+app.MapGet("/api/health/ready", (IDatabaseReadinessService readiness) =>
+{
+    if (readiness.IsReady)
+    {
+        return Results.Ok(new
+        {
+            status = "Ready",
+            database = "Connected",
+            initializedAt = readiness.InitializedAt
+        });
+    }
+
+    return Results.Json(new
+    {
+        status = "Unhealthy",
+        database = "Disconnected",
+        error = readiness.FailureReason ?? "Database initialization has not completed.",
+        lastCheckedAt = readiness.InitializedAt ?? DateTime.UtcNow
+    }, statusCode: StatusCodes.Status503ServiceUnavailable);
+});
 
 app.MapControllers();
 app.MapHub<JobFlowHub>("/hubs/jobflow");

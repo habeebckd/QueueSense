@@ -451,7 +451,7 @@ namespace JobFlow.Infrastructure.Migrations
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "admin@jobflow.ai",
                             Name = "System Administrator",
-                            PasswordHash = "$2a$11$0Ff8wZ8J9J/LqVv0pZ0rI.bZc0V0Wb8J9J/LqVv0pZ0rI.bZc0V0W",
+                            PasswordHash = "$2a$11$TKHys93kM2KIp9A57Cimh.jmBJKGCAKsDCC8XllMkKM/2o.SXzeoi",
                             Role = "Admin"
                         });
                 });

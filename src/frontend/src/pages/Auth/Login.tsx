@@ -6,8 +6,8 @@ import { LogIn, AlertCircle } from 'lucide-react';
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [email, setEmail] = useState('admin@jobflow.ai');
-  const [password, setPassword] = useState('AdminPassword123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,9 +20,21 @@ export const Login: React.FC = () => {
       navigate('/');
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message);
+        const msg = err.message || '';
+        if (
+          msg.includes('transient failure') ||
+          msg.includes('DATABASE_UNAVAILABLE') ||
+          msg.includes('database service is currently unavailable') ||
+          msg.includes('Failed to connect') ||
+          msg.includes('Connection refused') ||
+          msg.includes('Npgsql')
+        ) {
+          setError('The database service is currently unavailable. Please ensure PostgreSQL is running and try again.');
+        } else {
+          setError(msg);
+        }
       } else {
-        setError('Login failed');
+        setError('Login failed. Please check your credentials and try again.');
       }
     } finally {
       setLoading(false);
@@ -99,12 +111,6 @@ export const Login: React.FC = () => {
           <Link to="/register" className="text-brand-600 hover:text-brand-700 font-semibold">
             Create an account
           </Link>
-        </div>
-
-        <div className="mt-6 pt-4 border-t border-slate-100 text-center">
-          <p className="text-[11px] text-slate-400">
-            Default credentials: <span className="font-mono text-slate-600">admin@jobflow.ai</span> / <span className="font-mono text-slate-600">AdminPassword123!</span>
-          </p>
         </div>
       </div>
     </div>

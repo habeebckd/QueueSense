@@ -164,3 +164,18 @@ This document tracks all unit, integration, and end-to-end test specifications, 
 | **Docker Compose Container Launch** | `docker compose up -d` | **BLOCKED (Pipe Missing)** | `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.` |
 | **INFRA-001 Verification** | PostgreSQL container runtime | **BLOCKED (Host)** | Container cannot boot without active Docker engine. Compose configuration remains verified and ready. |
 | **DOCKER-007 Verification** | Full Docker integration | **BLOCKED (Host)** | Blocked awaiting BIOS VT-x activation. |
+
+---
+
+## 9. Authentication API, Error Sanitization & Admin Verification (2026-11-19)
+
+| Verification Item | Target / Test Method | Result | Actual Evidence / Details |
+|---|---|---|---|
+| **Admin Credential Audit** | `JobFlowDbContext.cs`, migrations | **RESOLVED** | Verified actual configured admin account is `admin@jobflow.ai`. Confirmed `admin@queuesense.local` was an inaccurate citation. |
+| **Password Hash Verification** | `AuthHashTests.cs` (xUnit) | **PASS** | Validated `$2a$11$TKHys93kM2KIp9A57Cimh.jmBJKGCAKsDCC8XllMkKM/2o.SXzeoi` matches `AdminPassword123!`. Proved legacy placeholder hash failed verification. |
+| **Exception Sanitization** | `POST /api/auth/login` | **PASS (Sanitized 503)** | Socket and transient database errors return safe `HTTP 503 DATABASE_UNAVAILABLE` with clear user message. No raw driver/EF Core messages leaked. |
+| **Database Readiness Probe** | `GET /api/health/ready` | **PASS (HTTP 503)** | Returns `{ "status": "Unhealthy", "database": "Disconnected", "error": "Failed to connect to 127.0.0.1:5432" }` when PostgreSQL is offline. |
+| **API Liveness Probe** | `GET /health` | **PASS (HTTP 200)** | Returns `{ "status": "Healthy", "service": "QueueSense API" }`. |
+| **UI Footer Cleanup** | `src/frontend/src/pages/Auth/Login.tsx` | **PASS** | Removed default credentials text from footer. Cleared hardcoded form defaults. |
+| **Frontend Error Presentation** | React UI Error Banner | **PASS** | Displays friendly error: `"The database service is currently unavailable. Please ensure PostgreSQL is running and try again."` |
+| **Live Database Authentication** | End-to-End JWT Issuance | **BLOCKED (Host Env)** | Backend & frontend verified and ready; database login requires PostgreSQL running on port 5432 (currently blocked by host VT-x firmware setting). |
