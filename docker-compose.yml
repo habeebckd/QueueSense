@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: jobflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-jobflow}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - queuesense-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-jobflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: src/backend/Dockerfile
+    container_name: jobflow-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-jobflow};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres};Include Error Detail=true
+      - Jwt__Secret=${JWT_SECRET:-SuperSecretJobFlowSecurityKeyThatIsAtLeast32BytesLong!2026}
+      - Jwt__Issuer=JobFlowApi
+      - Jwt__Audience=JobFlowClient
+      - Jwt__ExpirationMinutes=1440
+      - AI__Provider=${AI_PROVIDER:-Mock}
+      - AI__OpenAI__ApiKey=${OPENAI_API_KEY:-}
+      - AI__OpenAI__Model=${OPENAI_MODEL:-gpt-4o}
+      - AI__Ollama__BaseUrl=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - Worker__PollingIntervalSeconds=2
+      - Worker__LeaseDurationMinutes=5
+      - Worker__MaxConcurrency=4
+    ports:
+      - "5000:5000"
+    networks:
+      - queuesense-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/swagger/v1/swagger.json || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  frontend:
+    build:
+      context: src/frontend
+      dockerfile: Dockerfile
+    container_name: jobflow-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - queuesense-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  postgres_data:
+    name: queuesense_postgres_data
+
+networks:
+  queuesense-network:
+    name: queuesense-network
+    driver: bridge

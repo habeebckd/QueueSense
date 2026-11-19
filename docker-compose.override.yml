@@ -1,0 +1,10 @@
+# Local development overrides for QueueSense
+services:
+  backend:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Logging__LogLevel__Default=Information
+
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
